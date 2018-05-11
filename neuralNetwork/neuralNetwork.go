@@ -1,5 +1,6 @@
 package neuralNetwork
 
+//Referenced from : https://github.com/fxsjy/gonn
 import (
 	"encoding/json"
 	"fmt"
@@ -188,6 +189,7 @@ func (self *NeuralNetwork) Feedback(target []float64) {
 				delta = self.ErrOutput[i] * dsigmoid(self.OutputLayer[i])
 			}
 			change = self.Rate1*delta*self.HiddenLayer[j] + self.Rate2*self.LastChangeOutput[i][j]
+
 			self.WeightOutput[i][j] -= change
 			self.LastChangeOutput[i][j] = change
 

@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/Pattern-Recognition4-5/neuralNetwork"
+	//"github.com/Pattern-Recognition4-5/cnn"
 	"github.com/sirupsen/logrus"
 	"io"
 	"os"
@@ -15,6 +16,10 @@ const (
 )
 
 func main() {
+	nn()
+}
+
+func nn() {
 	fmt.Println("Training Neural Network......")
 
 	//Note:  Below code is referenced from PA3 with modification for Neural Network
@@ -27,10 +32,14 @@ func main() {
 	sourceImageFile := flag.String("si", "", "source image file")
 	flag.Parse()
 
+	fmt.Println(sourceLabelFile , sourceImageFile)
 	logrus.Info("Loading MNIST training data set ......")
+	//
+	labelData := ReadLabels(OpenFile(*sourceLabelFile))
+	imageData, width, height := ReadImages(OpenFile(*sourceImageFile)) // training file
 
-	labelData := ReadMNISTLabels(OpenFile(*sourceLabelFile))
-	imageData, width, height := ReadMNISTImages(OpenFile(*sourceImageFile))
+	//labelData := ReadLabels(OpenFile(*testLabelFile))
+	//imageData, width, height := ReadImages(OpenFile(*testImageFile)) // testing  file
 
 	//Not Required
 	fmt.Println("Total Source Images : ", len(imageData), len(imageData[0]), width, height)
@@ -45,25 +54,31 @@ func main() {
 		iterations = 30 (nn.Train)
 
 		Plot
-		1. training error (Mean squared normalized error ?)
-		2. testing error
-		3. criterion function on training data set
-		4. criterion function on testing data set
+		1. [DONE] training error (Mean squared normalized error ?)
+		2. [DONE] testing error
+		3. [DONE] criterion function on training data set
+		4. [DONE] criterion function on testing data set
 		5. the learning speed of the hidden layer (the average absolute changes of weights divided by the values of the weights).
 	*/
-	nn := neuralNetwork.NewNetwork(784, 100, 10, false, 0.25, 0.1)
+	//The extraction routines reshape (so as that each digit is represented by a 1-D column vector of size 784)
+	//nn := neuralNetwork.NewNetwork(784, 100, 10, false, 0.25, 0.1)
+	nn := neuralNetwork.NewNetwork(784, 30, 10, false, 5, 0.1)
 
-	fmt.Println("Err Output : ",nn.ErrOutput)
+
+
 	//specify number of iterations
-	nn.Train(inputs, targets, 10) //20 iterations
+	nn.Train(inputs, targets, 30) //20 iterations
+
+
+	logrus.Info(">>>>>>>>",nn.OutputLayer) //Criterion Function
 
 	//Load test data
 	var testLabelData []byte
 	var testImageData [][]byte
 	if *testLabelFile != "" && *testImageFile != "" {
 		logrus.Println("Loading test data...")
-		testLabelData = ReadMNISTLabels(OpenFile(*testLabelFile))
-		testImageData, _, _ = ReadMNISTImages(OpenFile(*testImageFile))
+		testLabelData = ReadLabels(OpenFile(*testLabelFile))
+		testImageData, _, _ = ReadImages(OpenFile(*testImageFile))
 	}
 
 	test_inputs := makeXCoordinates(testImageData)
@@ -72,8 +87,8 @@ func main() {
 	correct_ct := 0
 	for i, p := range test_inputs {
 		//fmt.Println(nn.Forward(p))
-		y := argmax(nn.Forward(p))
-		yy := argmax(test_targets[i])
+		y := argmaxFunction(nn.Forward(p))
+		yy := argmaxFunction(test_targets[i])
 		//fmt.Println(y,yy)
 		if y == yy {
 			correct_ct += 1
@@ -83,7 +98,9 @@ func main() {
 	fmt.Println("correct rate: ", float64(correct_ct)/float64(len(test_inputs)), correct_ct, len(test_inputs))
 }
 
-func ReadMNISTLabels(r io.Reader) (labels []byte) {
+
+
+func ReadLabels(r io.Reader) (labels []byte) {
 	header := [2]int32{}
 	binary.Read(r, binary.BigEndian, &header)
 	labels = make([]byte, header[1])
@@ -91,7 +108,7 @@ func ReadMNISTLabels(r io.Reader) (labels []byte) {
 	return
 }
 
-func ReadMNISTImages(r io.Reader) (images [][]byte, width, height int) {
+func ReadImages(r io.Reader) (images [][]byte, width, height int) {
 	header := [4]int32{}
 	binary.Read(r, binary.BigEndian, &header)
 	images = make([][]byte, header[1])
@@ -109,7 +126,7 @@ func makeXCoordinates(M [][]byte) [][]float64 {
 	for i := 0; i < rows; i++ {
 		result[i] = make([]float64, len(M[i]))
 		for j := 0; j < len(M[i]); j++ {
-			result[i][j] = pixelWeight(M[i][j])
+			result[i][j] = getWeightPixel(M[i][j])
 		}
 	}
 	return result
@@ -137,11 +154,11 @@ func OpenFile(path string) *os.File {
 	return file
 }
 
-func pixelWeight(px byte) float64 {
+func getWeightPixel(px byte) float64 {
 	return float64(px)/pixelRange*0.9 + 0.1
 }
 
-func argmax(A []float64) int {
+func argmaxFunction(A []float64) int {
 	x := 0
 	v := -1.0
 	for i, a := range A {
